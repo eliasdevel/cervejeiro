@@ -1,10 +1,3 @@
-#include <OneWire.h>
-#include <DallasTemperature.h>
-
-
-// Programa : Teste LCD 16x2 com Keypad
-// Autor : Arduino e Cia
-
 /*
  * Definition temperatures in EEPROM
  * Addr 0 to 2 will stay the time of te process
@@ -12,7 +5,9 @@
  * Addr 41 at 60 the hill's temperatures..
  * 
  */
-
+ 
+#include <OneWire.h>
+#include <DallasTemperature.h>
 #define ONE_WIRE_BUS 1
 #include <LiquidCrystal.h>  
 #include <EEPROM.h>
@@ -27,6 +22,9 @@ DallasTemperature sensors(&oneWire);
 int keypad_pin = A0;
 int keypad_value = 0;
 int keypad_value_old = 0;
+
+byte eeprom_time_positions[4]={1,3,5,7};
+byte eeprom_temperature_positions[4]={0,2,4,6};
  
 char btn_push;
  
@@ -215,21 +213,21 @@ void writeProcessTime(byte hours,byte minutes,byte seconds){
 }
 
 void insideMenu(int menuNumber){
-  byte menus[4]={1,3,5,7};
+  
   
     
     lcd.clear();
     lcd.setCursor(0,0);
     lcd.print("R" + String(menuNumber) +", Temp:");
-    int mnbr = menus[--menuNumber];
+    
     lcd.setCursor(0,1);
     lcd.print("* Tempo:");
     lcd.setCursor(0,1);
     
     
     
-    int temperature = EEPROM.read(mnbr -1);
-    int timing = EEPROM.read(mnbr);
+    int temperature = EEPROM.read(eeprom_temperature_positions[menuNumber-1]);
+    int timing = EEPROM.read(eeprom_time_positions[menuNumber-1]);
     int idr1 = 0;
     while(ReadKeypad()!= 'L')
     {
@@ -277,8 +275,8 @@ void insideMenu(int menuNumber){
        
     }
     
-    EEPROM.write(mnbr-1,temperature);
-    EEPROM.write(mnbr,timing);
+    EEPROM.write(eeprom_temperature_positions[menuNumber-1],temperature);
+    EEPROM.write(eeprom_time_positions[menuNumber-1],timing);
 }
 void reset(){
     for(int i =0; i<=20;i++){
@@ -317,12 +315,12 @@ void start(){
 }
 
 void monitor(){
-  byte positions[4]={1,3,5,7};
+ 
   lcd.clear(); 
   int index =0;
-   byte mnbr = positions[index];
+   
    while(ReadKeypad()!= 'L'){
-     if(index > 4){
+     if(index > 3){
        index = 0;
      }
      getTemperature();
@@ -331,10 +329,11 @@ void monitor(){
      lcd.print("R");
      lcd.print(index+1);
      
-     lcd.print("M:");
-     lcd.print(EEPROM.read(index));
-     lcd.print(":T:");
-     lcd.print(EEPROM.read(index + 1));
+     lcd.print("T:");
+     lcd.print(readErpromTemperature(index));
+     lcd.print("*C|R:");
+     lcd.print(readErpromTiming(index));
+     lcd.print("m");
      if(ReadKeypad()== 'U'){
        delay(100);
        index ++;
@@ -344,7 +343,7 @@ void monitor(){
        delay(100);
        index --;
      }  
-      mnbr = positions[index];
+      
    }
  }
 
@@ -355,3 +354,11 @@ void getTemperature(){
   lcd.print(sensors.getTempCByIndex(0)); 
   lcd.print(" *C");
 }
+
+byte readErpromTemperature(byte index){
+  return  EEPROM.read(eeprom_temperature_positions[index]);
+}
+ 
+byte readErpromTiming(byte index){
+  return  EEPROM.read(eeprom_time_positions[index]);
+}  
