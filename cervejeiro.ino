@@ -13,15 +13,15 @@
  * 
  */
 
-#define MAX_DS1820_SENSORS 2
+#define ONE_WIRE_BUS 1
 #include <LiquidCrystal.h>  
 #include <EEPROM.h>
 
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);  
 
 
- OneWire ds(3);
-
+OneWire oneWire(ONE_WIRE_BUS);
+DallasTemperature sensors(&oneWire);
  
  
 int keypad_pin = A0;
@@ -32,11 +32,11 @@ char btn_push;
  
 byte mainMenuPage = 1;
 byte mainMenuPageOld = 1;
-byte mainMenuTotal = 6;
+byte mainMenuTotal = 7;
  
 void setup()
 {
-  //sensors.begin();
+  sensors.begin();
   for(int i =0; i<=255;i++){
     if(EEPROM.read(i)==255){
     EEPROM.write(i,0);
@@ -75,8 +75,11 @@ void loop()
             case 5:
               menuReset();
               break;
-              case 6:
-            start();
+            case 6:
+              start();
+              break;
+            case 7:
+              monitor();
               break;
         }
  
@@ -133,6 +136,9 @@ void MainMenuDisplay()
           break;
         case 6:
           lcd.print("Start");
+          break;  
+        case 7:
+          lcd.print("Monitor");
           break;  
     }
 }
@@ -209,7 +215,7 @@ void writeProcessTime(byte hours,byte minutes,byte seconds){
 }
 
 void insideMenu(int menuNumber){
-  byte menus[4]={1,3,5,7}   ;
+  byte menus[4]={1,3,5,7};
   
     
     lcd.clear();
@@ -244,7 +250,7 @@ void insideMenu(int menuNumber){
             lcd.setCursor(10,0);
             
             lcd.print(temperature);
-            lcd.print("gC");
+            lcd.print("*C");
         }
         if(idr1==1){
             if(ReadKeypad()== 'U'){
@@ -293,100 +299,59 @@ void reset(){
 void start(){
   lcd.clear();
   lcd.setCursor(0,0);
-  
+  int secondsI = millis()/1000;
   
   while(ReadKeypad()!= 'L')
     {
-      lcd.clear();
+       
+      int seconds = (millis()/1000) - secondsI; 
+    
       
-       getTemperature();
-      delay(500); 
+        //lcd.clear();
+        
+        getTemperature();
+        lcd.setCursor(0, 1);
+         
+         lcd.print(seconds/60);    
     } 
 }
 
+void monitor(){
+  byte positions[4]={1,3,5,7};
+  lcd.clear(); 
+  int index =0;
+   byte mnbr = positions[index];
+   while(ReadKeypad()!= 'L'){
+     if(index > 4){
+       index = 0;
+     }
+     getTemperature();
+     lcd.setCursor(0,1);
+ 
+     lcd.print("R");
+     lcd.print(index+1);
+     
+     lcd.print("M:");
+     lcd.print(EEPROM.read(index));
+     lcd.print(":T:");
+     lcd.print(EEPROM.read(index + 1));
+     if(ReadKeypad()== 'U'){
+       delay(100);
+       index ++;
+     }
+              
+     if(ReadKeypad()== 'D'){
+       delay(100);
+       index --;
+     }  
+      mnbr = positions[index];
+   }
+ }
+
 
 void getTemperature(){
-
-
-byte addr[MAX_DS1820_SENSORS][8];
-
-  lcd.setCursor(0,0);
-  lcd.print("DS1820 Test");
-  if (!ds.search(addr[0])) 
-  {
-    lcd.setCursor(0,0);
-    lcd.print("No more addresses.");
-    ds.reset_search();
-    delay(250);
-    return;
-  }
-  if ( !ds.search(addr[1])) 
-  {
-    lcd.setCursor(0,0);
-    lcd.print("No more addresses.");
-    ds.reset_search();
-    delay(250);
-    return;
-  }
-
-int HighByte, LowByte, TReading, SignBit, Tc_100, Whole, Fract;
-char buf[20];
-
-  byte i, sensor;
-  byte present = 0;
-  byte data[12];
-
-  for (sensor=0;sensor<MAX_DS1820_SENSORS;sensor++)
-  {
-    if ( OneWire::crc8( addr[sensor], 7) != addr[sensor][7]) 
-    {
-      lcd.setCursor(0,0);
-      lcd.print("CRC is not valid");
-      return;
-    }
-
-    if ( addr[sensor][0] != 0x10) 
-    {
-      lcd.setCursor(0,0);
-      lcd.print("Device is not a DS18S20 family device.");
-      return;
-    }
-
-    ds.reset();
-    ds.select(addr[sensor]);
-    ds.write(0x44,1);         // start conversion, with parasite power on at the end
-
-    delay(1000);     // maybe 750ms is enough, maybe not
-    // we might do a ds.depower() here, but the reset will take care of it.
-
-    present = ds.reset();
-    ds.select(addr[sensor]);    
-    ds.write(0xBE);         // Read Scratchpad
-
-    for ( i = 0; i < 9; i++) 
-    {           // we need 9 bytes
-      data[i] = ds.read();
-    }
-
-    LowByte = data[0];
-    HighByte = data[1];
-    TReading = (HighByte << 8) + LowByte;
-    SignBit = TReading & 0x8000;  // test most sig bit
-    if (SignBit) // negative
-    {
-      TReading = (TReading ^ 0xffff) + 1; // 2's comp
-    }
-    Tc_100 = (TReading*100/2);    
-
-    Whole = Tc_100 / 100;  // separate off the whole and fractional portions
-    Fract = Tc_100 % 100;
-
-    sprintf(buf, "%d:%c%d.%d\337C     ",sensor,SignBit ? '-' : '+', Whole, Fract < 10 ? 0 : Fract);
-
-    lcd.setCursor(0,0);
-    lcd.print(buf);
-  
-  }
-
- 
+  sensors.requestTemperatures(); 
+  lcd.setCursor(0, 0); 
+  lcd.print(sensors.getTempCByIndex(0)); 
+  lcd.print(" *C");
 }
