@@ -12,7 +12,15 @@
 #include <LiquidCrystal.h>  
 #include <EEPROM.h>
 
-LiquidCrystal lcd(8, 9, 4, 5, 6, 7);  
+LiquidCrystal lcd(8, 9, 4, 5, 6, 7); 
+byte temperatureSimbol[8] ={ B00001100,
+                B00010010,
+                B00010010,
+                B00001100,
+                B00000000,
+                B00000000,
+                B00000000,
+                B00000000};
 
 
 OneWire oneWire(ONE_WIRE_BUS);
@@ -201,7 +209,7 @@ byte* getTime(){
   byte hours         = fullMinutes / 60;
   byte minutes       = fullMinutes % 60;
   byte seconds       = fullSeconds % 60;
-  byte ret[3] = {hours,minutes,seconds};
+  byte ret[3]        = {hours,minutes,seconds};
   
   return ret;
 }
@@ -221,20 +229,22 @@ void insideMenu(int menuNumber){
     lcd.print("R" + String(menuNumber) +", Temp:");
     
     lcd.setCursor(0,1);
+  
     lcd.print("* Tempo:");
     lcd.setCursor(0,1);
     
     
     
     int temperature = EEPROM.read(eeprom_temperature_positions[menuNumber-1]);
-    int timing = EEPROM.read(eeprom_time_positions[menuNumber-1]);
-    int idr1 = 0;
+    int timing      = EEPROM.read(eeprom_time_positions[menuNumber-1]);
+    int idr1        = 0;
     while(ReadKeypad()!= 'L')
     {
       lcd.blink();
        
         
         if(idr1==0){
+            lcd.setCursor(10,0);
             if(ReadKeypad()== 'U'){
               delay(100);
               temperature ++;
@@ -245,10 +255,11 @@ void insideMenu(int menuNumber){
               delay(100);
               temperature --;
             }
-            lcd.setCursor(10,0);
+            
             
             lcd.print(temperature);
-            lcd.print("*C");
+            lcd.createChar(0, temperatureSimbol);
+            lcd.print("C");
         }
         if(idr1==1){
             if(ReadKeypad()== 'U'){
@@ -271,7 +282,7 @@ void insideMenu(int menuNumber){
           idr1++;
         }
         
-        if(idr1>1) idr1 ==0;
+        if(idr1!=1&&idr1!=0) idr1 ==0;
        
     }
     
@@ -331,7 +342,8 @@ void monitor(){
      
      lcd.print("T:");
      lcd.print(readErpromTemperature(index));
-     lcd.print("*C|R:");
+     lcd.createChar(0, temperatureSimbol);
+     lcd.print("C|R:");
      lcd.print(readErpromTiming(index));
      lcd.print("m");
      if(ReadKeypad()== 'U'){
@@ -352,7 +364,9 @@ void getTemperature(){
   sensors.requestTemperatures(); 
   lcd.setCursor(0, 0); 
   lcd.print(sensors.getTempCByIndex(0)); 
-  lcd.print(" *C");
+  
+  lcd.createChar(0, temperatureSimbol);
+  lcd.print("C");
 }
 
 byte readErpromTemperature(byte index){
