@@ -1,26 +1,17 @@
 /*
- * Definition temperatures in EEPROM
- * Addr 0 to 2 will stay the time of te process
- * Addr 21 to 40 the hill's times
- * Addr 41 at 60 the hill's temperatures..
+ * Software for home brew beer at home using LCD shild, ds18b20 temperature sensor
+ * Libs :
+ * https://github.com/milesburton/Arduino-Temperature-Control-Library
  * 
  */
  
 #include <OneWire.h>
 #include <DallasTemperature.h>
-#define ONE_WIRE_BUS 1
+#define  ONE_WIRE_BUS 1 // temperature sensor pin...
 #include <LiquidCrystal.h>  
 #include <EEPROM.h>
 
-LiquidCrystal lcd(8, 9, 4, 5, 6, 7); 
-byte temperatureSimbol[8] ={ B00001100,
-                B00010010,
-                B00010010,
-                B00001100,
-                B00000000,
-                B00000000,
-                B00000000,
-                B00000000};
+LiquidCrystal lcd(8, 9, 4, 5, 6, 7);  
 
 
 OneWire oneWire(ONE_WIRE_BUS);
@@ -229,7 +220,6 @@ void insideMenu(int menuNumber){
     lcd.print("R" + String(menuNumber) +", Temp:");
     
     lcd.setCursor(0,1);
-  
     lcd.print("* Tempo:");
     lcd.setCursor(0,1);
     
@@ -244,7 +234,7 @@ void insideMenu(int menuNumber){
        
         
         if(idr1==0){
-            lcd.setCursor(10,0);
+           lcd.setCursor(10,0);
             if(ReadKeypad()== 'U'){
               delay(100);
               temperature ++;
@@ -258,8 +248,7 @@ void insideMenu(int menuNumber){
             
             
             lcd.print(temperature);
-            lcd.createChar(0, temperatureSimbol);
-            lcd.print("C");
+            lcd.print("*C");
         }
         if(idr1==1){
             if(ReadKeypad()== 'U'){
@@ -342,8 +331,7 @@ void monitor(){
      
      lcd.print("T:");
      lcd.print(readErpromTemperature(index));
-     lcd.createChar(0, temperatureSimbol);
-     lcd.print("C|R:");
+     lcd.print("*C|R:");
      lcd.print(readErpromTiming(index));
      lcd.print("m");
      if(ReadKeypad()== 'U'){
@@ -364,9 +352,7 @@ void getTemperature(){
   sensors.requestTemperatures(); 
   lcd.setCursor(0, 0); 
   lcd.print(sensors.getTempCByIndex(0)); 
-  
-  lcd.createChar(0, temperatureSimbol);
-  lcd.print("C");
+  lcd.print(" *C");
 }
 
 byte readErpromTemperature(byte index){
