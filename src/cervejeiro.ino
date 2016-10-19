@@ -23,6 +23,10 @@ const long intervalBuzzerAlarm = 500;
 int keypad_pin = A0;
 int keypad_value = 0;
 int keypad_value_old = 0;
+int buzzerState = LOW;
+int currentRampa = 0;
+int minutesRightTemperature = 0;
+int minutesAux = 0;
 
 byte eeprom_time_positions[4]={1,3,5,7};
 byte eeprom_temperature_positions[4]={0,2,4,6};
@@ -43,7 +47,14 @@ void setup()
 
   }
     lcd.begin(16,2);  //Initialize a 2x16 type LCD
+    uint8_t circle[8] = {0x2,0x5,0x2,0x0,0x0,0x0,0x0};
+    uint8_t temp[8] = {0x4,0xa,0xa,0xa,0xe,0xa,0x4};
+    uint8_t clock[8] = {0x0,0xe,0x11,0x15,0x13,0xe,0x0};
+    lcd.createChar(0, circle);
+    lcd.createChar(1, temp);
+    lcd.createChar(2, clock);
 
+    pinMode(13, OUTPUT);//buzzer pin
     MainMenuDisplay();
     delay(1000);
 }
@@ -299,21 +310,51 @@ void reset(){
 void start(){
   lcd.clear();
   lcd.setCursor(0,0);
-  int secondsI = millis()/1000;
+  unsigned long secondsI = millis()/1000;
 
   while(ReadKeypad()!= 'L')
     {
-
-      int seconds = (millis()/1000) - secondsI;
-
-
-        //lcd.clear();
-
+        unsigned long seconds = (millis()/1000) - secondsI;
         getTemperature();
         lcd.setCursor(0, 1);
+        int currentMinutes = seconds/60;
+        lcd.write(byte(2));
+        lcd.print(':');
+        lcd.print(currentMinutes);
 
-         lcd.print(seconds/60);
+        lcd.print("Rampa:");
+        setIndexCurrentRampa(3);
+        lcd.print(currentRampa);
+        // if(sensors.getTempCByIndex(0) > readEepromTemperature(currentRampa)){
+        //
+        // }
+
     }
+}
+
+void setIndexCurrentRampa(int minutes){
+    minutesAux = minutes;
+
+    byte sum =0;
+    byte read =0;
+    if (minutes > 0){
+      for (int i = 0; i < 4; i++) {
+        read = readEepromTiming(i);
+        sum += read;
+        if(!read) continue;
+
+        if ( sum >= minutes  ){
+          currentRampa = i+1;
+        }
+      }
+    }
+}
+
+bool isDone(){
+  if(!readEepromTiming(currentRampa)){
+    return true;
+  }
+  return false;
 }
 
 void monitor(){
@@ -322,7 +363,7 @@ void monitor(){
   int index =0;
 
    while(ReadKeypad()!= 'L'){
-     if(index > 3){
+     if(index > 4 || index < 0){
        index = 0;
      }
      getTemperature();
@@ -332,9 +373,10 @@ void monitor(){
      lcd.print(index+1);
 
      lcd.print("T:");
-     lcd.print(readErpromTemperature(index));
-     lcd.print("*C|R:");
-     lcd.print(readErpromTiming(index));
+     lcd.print(readEepromTemperature(index));
+     lcd.write(byte(0));
+     lcd.print("C|R:");
+     lcd.print(readEepromTiming(index));
      lcd.print("m");
      if(ReadKeypad()== 'U'){
        delay(100);
@@ -349,18 +391,40 @@ void monitor(){
    }
  }
 
+//TODO
+// void alarmHighTemperature(){
+//   unsigned long currentMillis = millis();
+//
+//   if (currentMillis - previousMillis >= intervalBuzzerAlarm) {
+//     // save the last time you blinked the LED
+//     previousMillis = currentMillis;
+//
+//     // if the LED is off turn it on and vice-versa:
+//     if (buzzerState == LOW) {
+//       buzzerState = HIGH;
+//     } else {
+//       buzzerState = LOW;
+//     }
+//
+//     // set the LED with the ledState of the variable:
+//     digitalWrite(13, buzzerState);
+//   }
+// }
 
 void getTemperature(){
   sensors.requestTemperatures();
+
   lcd.setCursor(0, 0);
+  lcd.write(byte(1));
   lcd.print(sensors.getTempCByIndex(0));
-  lcd.print(" *C");
+  lcd.write(byte(0));
+  lcd.print("C");
 }
 
-byte readErpromTemperature(byte index){
+byte readEepromTemperature(byte index){
   return  EEPROM.read(eeprom_temperature_positions[index]);
 }
 
-byte readErpromTiming(byte index){
+byte readEepromTiming(byte index){
   return  EEPROM.read(eeprom_time_positions[index]);
 }
